@@ -47,7 +47,8 @@ Then hit **📋 Copy** or **💬 Send on WhatsApp**.
 
 ## Features
 
-- **A–Z, 0–9** and `. , ! ? : ' - _ + = / ( ) *` — all hand-drawn on a 5×7 grid
+- **A–Z, 0–9** and `. , ! ? : ' - _ + = / ( ) *` — hand-drawn twice, at 9×12 and
+  5×7, so diagonals and curves stay clean at every size ([why](#adding-or-changing-a-letter))
 - Type `<3` to get a ♥
 - Lowercase is converted to uppercase automatically
 - Quick-pick emoji buttons for both symbols, or paste any symbol you like
@@ -152,23 +153,50 @@ extra configuration.
 | --- | --- |
 | `index.html` | the page and its controls |
 | `style.css` | mobile-first styling, light + dark |
-| `fonts.js` | the 5×7 pixel font — every letter shape lives here |
+| `fonts.js` | the two pixel fonts — every letter shape lives here |
 | `script.js` | scaling, rendering, copy and share |
 
 ### Adding or changing a letter
 
-Everything lives in `fonts.js`. Each glyph is 7 rows of 5 characters,
-`#` = main symbol, `.` = background:
+Everything lives in `fonts.js`, as rows of `#` (main symbol) and `.`
+(background). There are two hand-drawn masters:
 
 ```js
-'A': ['.###.',
-      '#...#',
-      '#...#',
-      '#####',
-      '#...#',
-      '#...#',
-      '#...#'],
+FONT_LARGE   // 9 x 12, used for row counts 9 and up
+FONT_SMALL   // 5 x  7, used for row counts 7 - 8
 ```
 
-The renderer scales these to whatever row count is asked for, sampling from
-the centre of each cell so letters stay symmetric at every size.
+```js
+'K': ['##.....##',      // FONT_LARGE
+      '##....##.',
+      '##...##..',
+      '##..##...',
+      '##.##....',
+      '####.....',
+      '####.....',
+      '##.##....',
+      '##..##...',
+      '##...##..',
+      '##....##.',
+      '##.....##'],
+```
+
+**Why two fonts?** A 5×7 grid has no room to describe a diagonal or a curve —
+the middle of an `N` gets three usable pixels, so scaling it up to 12 rows turns
+each one into a 2×2 block and you get a staircase. Straight letters like `T`,
+`F` and `Z` survive that fine; `N`, `K`, `W`, `C`, `G`, `J`, `Q` and `S` do not.
+
+`FONT_LARGE` is drawn at 9×12 — the exact size the default row count renders at,
+so at row count 12 nothing is scaled at all. Diagonals step one column per row
+and bowls get real rounded corners.
+
+Design rules for `FONT_LARGE`: strokes are 2px thick (3px for stems that must
+sit dead centre, since 2 cannot be centred in 9); diagonals move one column per
+row; every stroke stays 8-connected so nothing floats. `W` is an exact vertical
+flip of `M`, and `9` is a 180° rotation of `6`.
+
+Neither master is ever rendered *smaller* than it was drawn — that is why the
+minimum row count is 7. Below that, whole source rows get dropped and thin
+strokes vanish outright (at 5 rows the `!` and `'` disappeared completely).
+Above it the renderer samples from the centre of each cell, which keeps letters
+symmetric at every size.

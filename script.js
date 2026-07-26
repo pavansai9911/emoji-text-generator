@@ -12,7 +12,11 @@
 
   /* ---------------- settings ---------------- */
 
-  var MIN_ROWS = 5;
+  /* 7 is the floor because FONT_SMALL is drawn 7 rows tall. Below that we
+     would be throwing source rows away, and thin strokes vanish outright -
+     at 5 rows the "!" and "'" disappeared completely. Neither font is ever
+     rendered smaller than it was drawn. */
+  var MIN_ROWS = 7;
   var MAX_ROWS = 24;
   var SAFE_WIDTH = 12;      // more emoji per line than this may wrap on a phone
 
@@ -128,22 +132,47 @@
     return keys;
   }
 
-  /* Scale a 5x7 glyph up to outW x outH.
+  /* Pick the master font to draw from. FONT_LARGE is 9x12 and is what
+     makes diagonals and curves look right; FONT_SMALL only takes over
+     at row counts too small to hold it. */
+  function pickFont(outH) {
+    return outH >= LARGE_FONT_MIN_ROWS ? FONT_LARGE : FONT_SMALL;
+  }
+
+  /* Output width that keeps the chosen font's proportions. */
+  function widthFor(font, outH) {
+    return Math.max(3, Math.round(font.w * outH / font.h));
+  }
+
+  /* A glyph plus the size it was drawn at. Falls back to the small font
+     if the large one is ever missing a character. */
+  function findGlyph(font, key) {
+    if (font.glyphs[key]) return { rows: font.glyphs[key], w: font.w, h: font.h };
+    if (FONT_SMALL.glyphs[key]) {
+      return { rows: FONT_SMALL.glyphs[key], w: FONT_SMALL.w, h: FONT_SMALL.h };
+    }
+    return null;
+  }
+
+  /* Scale a glyph to outW x outH.
 
      Each output cell is sampled from the middle of its own slot
      ((i + 0.5) instead of i). That keeps the letter symmetric - both
      stems of a "U" come out the same thickness, which is not the case
-     if you sample from the top-left corner of the slot. */
-  function scaleGlyph(glyph, outH, outW) {
+     if you sample from the top-left corner of the slot.
+
+     At the default row count of 12 the large font is already 9x12, so
+     this is a straight copy and the letters come out exactly as drawn. */
+  function scaleGlyph(g, outH, outW) {
     var rows = [];
 
     for (var y = 0; y < outH; y++) {
-      var sy = Math.min(GLYPH_H - 1, Math.floor((y + 0.5) * GLYPH_H / outH));
-      var src = glyph[sy];
+      var sy = Math.min(g.h - 1, Math.floor((y + 0.5) * g.h / outH));
+      var src = g.rows[sy];
       var row = '';
 
       for (var x = 0; x < outW; x++) {
-        var sx = Math.min(GLYPH_W - 1, Math.floor((x + 0.5) * GLYPH_W / outW));
+        var sx = Math.min(g.w - 1, Math.floor((x + 0.5) * g.w / outW));
         row += src[sx];
       }
       rows.push(row);
@@ -164,7 +193,8 @@
 
   function buildGrid(message, rowCount) {
     var outH = rowCount;
-    var outW = Math.max(3, Math.round(GLYPH_W * outH / GLYPH_H));  // keep 5:7 shape
+    var font = pickFont(outH);
+    var outW = widthFor(font, outH);
     var letterGap = Math.max(1, Math.round(outH / 7));
     var wordGap = letterGap * 2;
 
@@ -182,7 +212,7 @@
         continue;
       }
 
-      var glyph = GLYPHS[key];
+      var glyph = findGlyph(font, key);
       if (!glyph) {
         if (unsupported.indexOf(key) === -1) unsupported.push(key);
         continue;
@@ -480,8 +510,10 @@
       if (s.main) el.main.value = s.main;
       if (s.bg) el.bg.value = s.bg;
       if (s.rows) {
-        el.rows.value = s.rows;
-        el.range.value = s.rows;
+        // an older session may have stored a row count below today's minimum
+        var n = clamp(parseInt(s.rows, 10) || 12, MIN_ROWS, MAX_ROWS);
+        el.rows.value = n;
+        el.range.value = n;
       }
     } catch (e) { /* corrupt - ignore */ }
   }
