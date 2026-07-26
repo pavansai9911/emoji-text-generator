@@ -15,7 +15,15 @@
   var MIN_ROWS = 5;
   var MAX_ROWS = 24;
   var SAFE_WIDTH = 12;      // more emoji per line than this may wrap on a phone
-  var SHARE_LIMIT = 2500;   // above this the wa.me url gets too long, use Copy
+
+  /* Longest "https://wa.me/?text=..." url we dare to open.
+     Each emoji becomes up to 18 characters once percent-encoded (❤️ ->
+     %E2%9D%A4%EF%B8%8F), so the url explodes fast. Phones and web servers
+     start silently truncating somewhere around 8 KB, which is why only the
+     first few letters used to arrive. We stay well under that.
+     This only applies to the fallback path - the Web Share API below has
+     no such limit and is what mobile actually uses. */
+  var WA_URL_LIMIT = 6000;
 
   var MAIN_PICKS = ['❤️', '💖', '💜', '🧡', '💛', '💚', '💙', '🌸', '🌹', '⭐', '✨', '🔥', '🥰', '😘', '🦋'];
   var BG_PICKS   = ['⬜', '⬛', '🤍', '🖤', '⚪', '⚫', '🟪', '🟦', '🟩', '🟨', '🟥', '🌑', '▫️', '➖'];
@@ -37,11 +45,13 @@
     warn:      document.getElementById('warn'),
     copy:      document.getElementById('copyBtn'),
     share:     document.getElementById('shareBtn'),
+    shareNote: document.getElementById('shareNote'),
     toast:     document.getElementById('toast')
   };
 
   var plainText = '';   // what actually gets copied / shared
   var artCols = 9;
+  var shareMode = 'blocked';   // 'native' | 'url' | 'blocked'
 
   /* ------------------------------------------------------------------
      helpers
@@ -217,7 +227,7 @@
       el.empty.hidden = false;
       el.stats.textContent = '—';
       el.copy.disabled = true;
-      el.share.disabled = true;
+      updateShare();
       showWarn(built.unsupported.length
         ? 'Nothing to draw. These are not supported: ' + built.unsupported.join(' ')
         : '');
@@ -260,14 +270,10 @@
       msgs.push('⚠️ ' + built.cols + ' symbols wide — WhatsApp may wrap this on a phone. ' +
                 'Try a row count of 16 or less.');
     }
-    if (symbolCount > SHARE_LIMIT) {
-      msgs.push('This is a big message (' + symbolCount.toLocaleString() +
-                ' symbols). Use Copy instead of the WhatsApp button.');
-    }
     showWarn(msgs.join('<br>'));
 
     el.copy.disabled = false;
-    el.share.disabled = symbolCount > SHARE_LIMIT;
+    updateShare();
 
     saveSettings();
   }
@@ -326,9 +332,93 @@
     }
   }
 
+  function waUrl(text) {
+    return 'https://wa.me/?text=' + encodeURIComponent(text);
+  }
+
+  /* The Web Share API hands the text straight to WhatsApp as a string, so
+     nothing gets cut off no matter how big the art is. Every mobile browser
+     that matters supports it (over https). */
+  function canNativeShare(text) {
+    if (!navigator.share) return false;
+    if (navigator.canShare) {
+      try { return navigator.canShare({ text: text }); } catch (e) { return false; }
+    }
+    return true;
+  }
+
+  /* Work out how - or whether - this art can be sent, and say so on the
+     button so the user is never left wondering why half of it arrived. */
+  function updateShare() {
+    if (!plainText) {
+      shareMode = 'blocked';
+      el.share.disabled = true;
+      el.share.textContent = '💬 Send on WhatsApp';
+      setShareNote('');
+      return;
+    }
+
+    if (canNativeShare(plainText)) {
+      shareMode = 'native';
+    } else if (waUrl(plainText).length <= WA_URL_LIMIT) {
+      shareMode = 'url';
+    } else {
+      shareMode = 'blocked';
+    }
+
+    if (shareMode === 'blocked') {
+      el.share.disabled = true;
+      el.share.textContent = '💬 Too long to send';
+      el.share.title = 'This art is too big to send through a link. Use Copy instead.';
+      setShareNote(
+        '⚠️ <strong>Too long to send directly from this browser.</strong> ' +
+        'Tap <strong>📋 Copy</strong> and paste it into WhatsApp — the whole thing will go. ' +
+        '(Or use a shorter message / smaller row count.)',
+        'warn-note'
+      );
+      return;
+    }
+
+    el.share.disabled = false;
+    el.share.textContent = '💬 Send on WhatsApp';
+    el.share.title = '';
+
+    setShareNote(
+      shareMode === 'native'
+        ? 'Opens your share sheet — pick WhatsApp. The full art is sent, nothing is cut off.'
+        : '',
+      'info-note'
+    );
+  }
+
+  function setShareNote(html, cls) {
+    el.shareNote.className = 'share-note' + (cls ? ' ' + cls : '');
+    if (!html) {
+      el.shareNote.hidden = true;
+      el.shareNote.innerHTML = '';
+      return;
+    }
+    el.shareNote.innerHTML = html;
+    el.shareNote.hidden = false;
+  }
+
   function doShare() {
-    if (!plainText) return;
-    window.open('https://wa.me/?text=' + encodeURIComponent(plainText), '_blank', 'noopener');
+    if (!plainText || shareMode === 'blocked') return;
+
+    if (shareMode === 'native') {
+      // must be called straight from the click, so no await/setTimeout here
+      navigator.share({ text: plainText }).catch(function (err) {
+        if (err && err.name === 'AbortError') return;      // user closed the sheet
+        if (waUrl(plainText).length <= WA_URL_LIMIT) {
+          window.open(waUrl(plainText), '_blank', 'noopener');
+        } else {
+          toast('Could not share — use 📋 Copy instead');
+        }
+      });
+      return;
+    }
+
+    window.open(waUrl(plainText), '_blank', 'noopener');
   }
 
   /* ------------------------------------------------------------------

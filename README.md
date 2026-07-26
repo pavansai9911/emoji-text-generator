@@ -54,9 +54,33 @@ Then hit **📋 Copy** or **💬 Send on WhatsApp**.
 - Row count as a number box **and** a slider
 - Live preview that lines up as a real grid, exactly like WhatsApp shows it
 - Warns you if the art gets too wide for a phone screen
-- One-click copy (with a fallback for older browsers) and a direct WhatsApp link
+- One-click copy (with a fallback for older browsers)
+- Sends the **whole** art to WhatsApp — see [Sharing](#sharing) below
 - Remembers your last settings
 - Works on mobile, light and dark mode
+
+---
+
+## Sharing
+
+The obvious way to send to WhatsApp is a `https://wa.me/?text=...` link — but
+it silently truncates. Every emoji becomes up to 18 characters once
+percent-encoded (`❤️` → `%E2%9D%A4%EF%B8%8F`), so a 4-letter message at row
+count 12 is already a **6,299-character URL**, and `I LOVE U` is **9,833**.
+Phones and web servers cut URLs off around 8 KB, so only the first few letters
+ever arrived.
+
+So the app uses the **Web Share API** (`navigator.share`) instead. It hands the
+text to WhatsApp as a string rather than stuffing it into a URL, so there is no
+length limit and nothing gets cut off. This is what every phone will use.
+
+If that API isn't available (desktop Firefox, Chrome on Linux) it falls back to
+the `wa.me` link — but **only** while the URL stays under 6,000 characters. Past
+that the button disables itself and says *"Too long to send"*, with a note
+telling you to use **📋 Copy** instead. It will never again send you a half
+message without warning.
+
+**Copy always works, at any size.**
 
 ---
 
