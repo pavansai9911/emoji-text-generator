@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#e8467c" />
+  <meta name="description" content="Turn any message into big emoji art you can copy and send on WhatsApp." />
+  <title>Emoji Text Generator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💌</text></svg>" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <main class="app">
+
+    <header class="head">
+      <h1>----------------------------------------------</h1>
+      <h1>❤️ FOR MY CUTEST LOVELY TEACHER ❤️</h1>
+      <h1>----------------------------------------------</h1>
+      <!-- <h1>[for my cute lovely teacher 🌹]</h1> -->
+      <!-- <p class="sub">Type a message, pick two symbols, copy it straight into WhatsApp.</p> -->
+    </header>
+
+    <!-- ============== CONTROLS ============== -->
+    <section class="card">
+
+      <!-- message -->
+      <div class="field">
+        <label for="text">Message:</label>
+        <input
+          id="text"
+          type="text"
+          value="I LOVE U"
+          maxlength="40"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="e.g. I MISS YOU" />
+        <p class="hint">A&ndash;Z, 0&ndash;9, space and <code>. , ! ? : ' - _ + = / ( ) *</code> &middot; type <code>&lt;3</code> for a ♥</p>
+      </div>
+
+      <!-- symbols -->
+      <div class="grid-2">
+
+        <div class="field">
+          <label for="mainSym">Main symbol <span class="tag">the letter</span></label>
+          <input id="mainSym" class="sym-input" type="text" value="❤️" autocomplete="off" spellcheck="false" />
+          <div class="picks" id="mainPicks" role="group" aria-label="Quick pick main symbol"></div>
+        </div>
+
+        <div class="field">
+          <label for="bgSym">Background symbol <span class="tag">the fill</span></label>
+          <input id="bgSym" class="sym-input" type="text" value="⬜" autocomplete="off" spellcheck="false" />
+          <div class="picks" id="bgPicks" role="group" aria-label="Quick pick background symbol"></div>
+        </div>
+
+      </div>
+
+      <!-- row count -->
+      <div class="field">
+        <label for="rowCount">Row count <span class="tag">height of each letter</span></label>
+        <div class="row-count">
+          <input
+            id="rowCount"
+            type="number"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            value="12"
+            min="5"
+            max="24"
+            step="1" />
+          <input id="rowRange" type="range" min="5" max="24" step="1" value="12" aria-label="Row count slider" />
+        </div>
+        <p class="hint">Bigger number = bigger letters. 10&ndash;14 looks best on a phone.</p>
+      </div>
+
+    </section>
+
+    <!-- ============== OUTPUT ============== -->
+    <section class="card out-card">
+
+      <div class="out-head">
+        <h2>Preview</h2>
+        <span class="stats" id="stats">&mdash;</span>
+      </div>
+
+      <div id="warn" class="warn" hidden></div>
+
+      <div class="art-wrap" id="artWrap">
+        <div class="art" id="art" aria-label="Emoji art preview"></div>
+        <p class="empty" id="empty" hidden>Type something above to see your art ✨</p>
+      </div>
+
+      <div class="actions">
+        <button id="copyBtn" class="btn btn-primary" type="button">📋 Copy</button>
+        <button id="shareBtn" class="btn btn-wa" type="button">💬 Send on WhatsApp</button>
+      </div>
+
+      <p class="hint center">Paste it in WhatsApp as one message. Keep the width small so it doesn&rsquo;t wrap.</p>
+
+    </section>
+
+    <footer class="foot">Made with ❤️ &middot; on my 'Swapna Sundhari' - Most Beautiful, Talented, Sweetest & My Forever Pellam ❤️ &middot;</footer>
+
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="fonts.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
